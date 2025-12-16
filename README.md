@@ -1,20 +1,70 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🔧 Solinelson - Sistema de Gestão de Marido de Aluguel
 
-# Run and deploy your AI Studio app
+Sistema completo para gerenciar solicitações de serviços e galeria de fotos, com painel administrativo integrado.
 
-This contains everything you need to run your app locally.
+![Status](https://img.shields.io/badge/status-production%20ready-brightgreen)
+![React](https://img.shields.io/badge/React-19.2.3-blue)
+![PHP](https://img.shields.io/badge/PHP-7.4%2B-purple)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-orange)
 
-View your app in AI Studio: https://ai.studio/apps/temp/3
+---
 
-## Run Locally
+## 🚀 Início Rápido
 
-**Prerequisites:**  Node.js
+### 1. Instalar Dependências
+```bash
+npm install
+```
 
+### 2. Configurar Banco de Dados
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Edite `api/config.php` com suas credenciais e importe o schema:
+
+```bash
+mysql -h [HOST] -u [USER] -p [DATABASE] < database.sql
+```
+
+### 3. Iniciar Servidores
+
+```bash
+./dev.sh
+```
+
+Abre automaticamente:
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:8000/api/
+
+---
+
+## 📚 Documentação Completa
+
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Como desenvolver localmente
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Testes de integração
+- **[DEPLOY_GUIDE.md](DEPLOY_GUIDE.md)** - Deploy para produção
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Resumo técnico
+
+---
+
+## 🎯 Funcionalidades
+
+- ✅ Formulário de solicitação de orçamento
+- ✅ Galeria de fotos dinâmica
+- ✅ Painel administrativo completo
+- ✅ Autenticação segura (username + password)
+- ✅ Integração com WhatsApp
+- ✅ Busca de CEP automática
+- ✅ Interface responsiva
+
+---
+
+## 🔐 Credenciais
+
+### Admin Padrão
+- **Username**: `admin`
+- **Password**: `admin`
+
+⚠️ **Troque após primeiro acesso!**
+
+---
+
+**Código 1615** | https://codigo1615.com.br

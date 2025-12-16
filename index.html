@@ -230,32 +230,60 @@
 
       /* Admin Panel Styles */
       .admin-layout {
-        display: grid;
-        grid-template-columns: 250px 1fr;
-        min-height: 100vh;
-      }
-      
-      .admin-sidebar {
-        background-color: #333;
-        color: white;
-        padding: 20px;
+        min-height: calc(100vh - 80px);
+        background-color: #f8f9fa;
       }
       
       .admin-content {
-        padding: 30px;
-        background-color: #f4f4f4;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0;
       }
       
-      .admin-menu-item {
-        padding: 12px;
+      .admin-tabs {
+        display: flex;
+        gap: 0;
+        background: white;
+        border-bottom: 2px solid #e0e0e0;
+        padding: 0 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+      
+      .admin-tab {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 18px 24px;
         cursor: pointer;
-        border-radius: 6px;
-        margin-bottom: 5px;
-        transition: background 0.2s;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.3s ease;
+        color: #666;
+        font-weight: 500;
+        position: relative;
       }
       
-      .admin-menu-item:hover, .admin-menu-item.active {
-        background-color: var(--primary);
+      .admin-tab:hover {
+        color: var(--primary);
+        background-color: rgba(171, 91, 13, 0.03);
+      }
+      
+      .admin-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        font-weight: 600;
+      }
+      
+      .tab-icon {
+        font-size: 1.3rem;
+      }
+      
+      .tab-text {
+        font-size: 0.95rem;
+      }
+      
+      .admin-content-area {
+        padding: 30px;
       }
       
       .status-badge {
@@ -289,13 +317,21 @@
       }
 
       @media (max-width: 768px) {
-        .admin-layout {
-          grid-template-columns: 1fr;
-        }
-        .admin-sidebar {
-          display: flex;
-          gap: 10px;
+        .admin-tabs {
+          padding: 0 15px;
           overflow-x: auto;
+          gap: 5px;
+        }
+        .admin-tab {
+          padding: 14px 18px;
+          min-width: fit-content;
+          white-space: nowrap;
+        }
+        .tab-text {
+          font-size: 0.9rem;
+        }
+        .admin-content-area {
+          padding: 20px 15px;
         }
       }
 
@@ -307,6 +343,205 @@
 
       .animate-fade-in {
         animation: fadeIn 0.6s ease-out forwards;
+      }
+
+      /* PhotoSwipe Customizations */
+      .pswp__custom-caption {
+        background: rgba(0, 0, 0, 0.75);
+        font-size: 16px;
+        color: #fff;
+        width: calc(100% - 32px);
+        max-width: 400px;
+        padding: 8px 16px;
+        border-radius: 4px;
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        text-align: center;
+      }
+
+      .pswp__custom-caption a {
+        color: #fff;
+        text-decoration: underline;
+      }
+
+      /* Album card hover effect */
+      .album-card {
+        position: relative;
+      }
+
+      .album-card::after {
+        content: '🔍 Clique para ver todas as fotos';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        font-weight: 600;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .album-card:hover::after {
+        opacity: 1;
+      }
+
+      @media (max-width: 768px) {
+        .album-card::after {
+          content: '👆 Toque para ver';
+        }
+      }
+
+      /* Dropzone Styles */
+      .dropzone {
+        border: 2px dashed #d48a02;
+        border-radius: 8px;
+        padding: 40px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: #fef9f0;
+      }
+
+      .dropzone:hover {
+        border-color: #b37302;
+        background-color: #fef4e6;
+      }
+
+      .dropzone.dragging {
+        border-color: #b37302;
+        background-color: #fef4e6;
+        transform: scale(1.02);
+      }
+
+      .dropzone-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #d48a02;
+      }
+
+      .dropzone-content svg {
+        color: #d48a02;
+        margin-bottom: 10px;
+      }
+
+      /* Admin Panel Mobile Responsiveness */
+      @media (max-width: 768px) {
+        .admin-header {
+          flex-direction: column;
+          gap: 10px;
+          padding: 15px;
+        }
+
+        .admin-tabs {
+          width: 100%;
+          flex-direction: column;
+        }
+
+        .tab-button {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .admin-content {
+          padding: 15px;
+        }
+
+        /* Tables responsive */
+        .table {
+          font-size: 0.85rem;
+        }
+
+        .table th,
+        .table td {
+          padding: 8px 4px;
+          white-space: nowrap;
+        }
+
+        /* Form fields responsive */
+        .form-group {
+          margin-bottom: 15px;
+        }
+
+        .dropzone {
+          padding: 30px 15px;
+        }
+
+        /* Album preview grid responsive */
+        div[style*="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr))"] {
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+          gap: 10px !important;
+        }
+
+        /* Buttons responsive */
+        .btn {
+          padding: 10px 16px;
+          font-size: 0.9rem;
+        }
+
+        /* Hide overflow on small screens */
+        .admin-content > div {
+          overflow-x: auto;
+        }
+
+        /* Admin sidebar mobile */
+        .admin-layout {
+          grid-template-columns: 1fr;
+        }
+        
+        .admin-sidebar {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding: 15px;
+        }
+
+        .admin-menu-item {
+          white-space: nowrap;
+          min-width: fit-content;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .table {
+          font-size: 0.75rem;
+        }
+
+        .table th,
+        .table td {
+          padding: 6px 3px;
+        }
+
+        /* Stack form buttons on very small screens */
+        button[type="submit"],
+        button[type="button"] {
+          width: 100%;
+          margin-bottom: 10px;
+        }
+      }
+
+      /* Loading Spinner */
+      .loading {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
     </style>
   <script type="importmap">

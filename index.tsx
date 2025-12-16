@@ -1,5 +1,7 @@
 import React, { useState, useEffect, ChangeEvent, FormEvent, DragEvent, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
+import PhotoSwipeLightbox from 'photoswipe/lightbox';
+import 'photoswipe/style.css';
 
 // --- Constants ---
 const PHONE_DISPLAY = "(31) 97214-4254";
@@ -33,10 +35,38 @@ interface BudgetRequest extends FormData {
   createdAt: string;
 }
 
-interface GalleryItem {
+interface Album {
   id: number;
+  title: string;
+  description: string;
+  main_photo_url: string;
+  main_photo_width: number;
+  main_photo_height: number;
+  photo_count: number;
+  is_featured: boolean;
+  display_order: number;
+}
+
+interface AlbumPhoto {
+  id: number;
+  album_id: number;
   url: string;
   title: string;
+  width: number;
+  height: number;
+  display_order: number;
+}
+
+interface NewAlbumForm {
+  title: string;
+  description: string;
+  photos: Array<{
+    url: string;
+    title: string;
+    width: number;
+    height: number;
+  }>;
+  main_photo_index: number;
 }
 
 // --- Icons ---
@@ -51,56 +81,170 @@ const IconCheck = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="no
 const IconLock = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
 const IconUpload = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
 
-// --- MOCK API SERVICE ---
-// In a real scenario, these would be fetch() calls to PHP files (e.g., api/get_requests.php, api/add_gallery.php)
-// Since we don't have a backend here, we use localStorage to simulate the PHP/MySQL behavior.
+// --- API SERVICE ---
+// Real API calls to PHP backend
 
-const MockService = {
-  getGallery: (): GalleryItem[] => {
-    const stored = localStorage.getItem('solinelson_gallery');
-    if (stored) return JSON.parse(stored);
-    return [
-      { id: 1, title: 'Instalação Hidráulica', url: 'https://images.unsplash.com/photo-1581094794329-cd8119608f84?auto=format&fit=crop&w=400&q=80' },
-      { id: 2, title: 'Reforma de Banheiro', url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80' },
-      { id: 3, title: 'Pintura Residencial', url: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80' },
-      { id: 4, title: 'Reparo Elétrico', url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=80' },
-    ];
+// 🔧 Configure a URL base da API conforme o ambiente:
+// Desenvolvimento Local (PHP built-in server via dev.sh):
+//   const API_BASE = 'http://localhost:8000/api';
+// Produção (mesmo domínio):
+//   const API_BASE = '/api';
+// Produção (domínio diferente):
+//   const API_BASE = 'https://codigo1615.com.br/solinelson/api';
+const API_BASE = 'http://localhost:8000/api';
+
+const APIService = {
+  // Álbuns
+  getAlbums: async (): Promise<Album[]> => {
+    try {
+      const response = await fetch(`${API_BASE}/get_albums.php`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.success ? data.albums : [];
+    } catch (error) {
+      console.error('Erro ao buscar álbuns:', error);
+      return [];
+    }
   },
   
-  addGalleryItem: (item: Omit<GalleryItem, 'id'>) => {
-    const current = MockService.getGallery();
-    const newItem = { ...item, id: Date.now() };
-    localStorage.setItem('solinelson_gallery', JSON.stringify([...current, newItem]));
-    return newItem;
+  getAlbumPhotos: async (albumId: number): Promise<AlbumPhoto[]> => {
+    try {
+      const response = await fetch(`${API_BASE}/get_album_photos.php?album_id=${albumId}`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.success ? data.photos : [];
+    } catch (error) {
+      console.error('Erro ao buscar fotos do álbum:', error);
+      return [];
+    }
   },
 
-  deleteGalleryItem: (id: number) => {
-    const current = MockService.getGallery();
-    localStorage.setItem('solinelson_gallery', JSON.stringify(current.filter(i => i.id !== id)));
+  addAlbum: async (album: NewAlbumForm): Promise<Album | null> => {
+    try {
+      const response = await fetch(`${API_BASE}/add_album.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(album)
+      });
+      const data = await response.json();
+      return data.success ? data.data : null;
+    } catch (error) {
+      console.error('Erro ao adicionar álbum:', error);
+      return null;
+    }
   },
 
-  getRequests: (): BudgetRequest[] => {
-    const stored = localStorage.getItem('solinelson_requests');
-    if (stored) return JSON.parse(stored);
-    return [];
+  deleteAlbum: async (id: number): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/delete_album.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erro ao deletar álbum:', error);
+      return false;
+    }
   },
 
-  addRequest: (data: FormData) => {
-    const current = MockService.getRequests();
-    const newRequest: BudgetRequest = {
-      ...data,
-      id: Date.now(),
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-    localStorage.setItem('solinelson_requests', JSON.stringify([newRequest, ...current]));
-    return newRequest;
+  // Solicitações
+  getRequests: async (): Promise<BudgetRequest[]> => {
+    try {
+      const response = await fetch(`${API_BASE}/get_requests.php`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.success ? data.data : [];
+    } catch (error) {
+      console.error('Erro ao buscar solicitações:', error);
+      return [];
+    }
   },
 
-  updateRequestStatus: (id: number, status: 'pending' | 'contacted') => {
-    const current = MockService.getRequests();
-    const updated = current.map(r => r.id === id ? { ...r, status } : r);
-    localStorage.setItem('solinelson_requests', JSON.stringify(updated));
+  addRequest: async (formData: FormData): Promise<BudgetRequest | null> => {
+    try {
+      const response = await fetch(`${API_BASE}/add_request.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(formData)
+      });
+      const data = await response.json();
+      if (data.success) {
+        return {
+          ...formData,
+          id: data.data.id,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro ao criar solicitação:', error);
+      return null;
+    }
+  },
+
+  updateRequestStatus: async (id: number, status: 'pending' | 'contacted'): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/update_request.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id, status })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      return false;
+    }
+  },
+
+  // Autenticação
+  login: async (username: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/login.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erro ao fazer login:', error);
+      return false;
+    }
+  },
+
+  logout: async (): Promise<void> => {
+    try {
+      await fetch(`${API_BASE}/logout.php`, { 
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  },
+
+  checkSession: async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/check_session.php`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.authenticated || false;
+    } catch (error) {
+      return false;
+    }
   }
 };
 
@@ -208,9 +352,16 @@ const Footer = ({ setView }: { setView: (v: ViewState) => void }) => (
             Soluções profissionais de manutenção e construção para sua residência ou empresa. Qualidade e confiança garantidas.
           </p>
           <div style={{ display: 'flex', gap: '15px' }}>
-             {/* Social Icons Placeholder */}
-             <div style={{ width: 36, height: 36, background: '#333', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconInstagram /></div>
-             <div style={{ width: 36, height: 36, background: '#333', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconFacebook /></div>
+             <a 
+               href="https://www.instagram.com/solinelsonmaridodealuguel_/" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #833AB4, #FD1D1D, #F77737)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.3s ease' }}
+               onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+               onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+             >
+               <IconInstagram />
+             </a>
           </div>
         </div>
         
@@ -262,15 +413,27 @@ const Footer = ({ setView }: { setView: (v: ViewState) => void }) => (
 // --- Admin Components ---
 
 const Login = ({ setView }: { setView: (v: ViewState) => void }) => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    if (password === 'admin') {
-      setView('admin');
-    } else {
-      setError('Senha incorreta.');
+    setError('');
+    setLoading(true);
+
+    try {
+      const success = await APIService.login(username, password);
+      if (success) {
+        setView('admin');
+      } else {
+        setError('Usuário ou senha incorretos.');
+      }
+    } catch (err) {
+      setError('Erro ao conectar ao servidor.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -280,128 +443,240 @@ const Login = ({ setView }: { setView: (v: ViewState) => void }) => {
         <h2 style={{ textAlign: 'center', marginBottom: '20px', color: 'var(--primary)' }}> <IconLock /> Admin Login</h2>
         <form onSubmit={handleLogin}>
           <div className="form-group">
+            <label className="form-label">Usuário</label>
+            <input 
+              type="text" 
+              className="form-control" 
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Digite o usuário"
+              required
+              disabled={loading}
+            />
+          </div>
+          <div className="form-group">
             <label className="form-label">Senha</label>
             <input 
               type="password" 
               className="form-control" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite a senha (admin)"
+              placeholder="Digite a senha"
+              required
+              disabled={loading}
             />
           </div>
           {error && <p style={{ color: 'var(--error)', marginBottom: '15px' }}>{error}</p>}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Entrar</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
         </form>
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem', color: '#666' }}>
+          Usuário padrão: <strong>admin</strong>
+        </p>
       </div>
     </div>
   );
 };
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'gallery'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'albums'>('requests');
   const [requests, setRequests] = useState<BudgetRequest[]>([]);
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Gallery Form State
-  const [newPhotoUrl, setNewPhotoUrl] = useState('');
-  const [newPhotoTitle, setNewPhotoTitle] = useState('');
+  // Album Form State
+  const [newAlbum, setNewAlbum] = useState<NewAlbumForm>({
+    title: '',
+    description: '',
+    photos: [],
+    main_photo_index: 0
+  });
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setRequests(MockService.getRequests());
-    setGallery(MockService.getGallery());
+    loadData();
   }, []);
 
-  const handleStatusChange = (id: number, currentStatus: string) => {
-    const newStatus = currentStatus === 'pending' ? 'contacted' : 'pending';
-    MockService.updateRequestStatus(id, newStatus as any);
-    setRequests(MockService.getRequests());
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [requestsData, albumsData] = await Promise.all([
+        APIService.getRequests(),
+        APIService.getAlbums()
+      ]);
+      setRequests(requestsData || []);
+      setAlbums(albumsData || []);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setRequests([]);
+      setAlbums([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // --- Gallery Logic (Drag and Drop) ---
+  const handleStatusChange = async (id: number, currentStatus: string) => {
+    const newStatus = currentStatus === 'pending' ? 'contacted' : 'pending';
+    const success = await APIService.updateRequestStatus(id, newStatus as any);
+    if (success) {
+      loadData();
+    } else {
+      alert('Erro ao atualizar status');
+    }
+  };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  // --- Album Logic ---
+
+  const handlePhotoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    await processFiles(files);
+  };
+
+  const processFiles = async (files: FileList) => {
+    const photosWithDimensions: Array<{ url: string; title: string; width: number; height: number }> = [];
+
+    const processFile = (file: File): Promise<{ url: string; title: string; width: number; height: number }> => {
+      return new Promise((resolve, reject) => {
+        if (!file.type.startsWith('image/')) {
+          reject('Arquivo não é uma imagem');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            resolve({
+              url: event.target?.result as string,
+              title: file.name.split('.')[0],
+              width: img.width,
+              height: img.height
+            });
+          };
+          img.onerror = () => reject('Erro ao carregar imagem');
+          img.src = event.target?.result as string;
+        };
+        reader.onerror = () => reject('Erro ao ler arquivo');
+        reader.readAsDataURL(file);
+      });
+    };
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const photo = await processFile(files[i]);
+        photosWithDimensions.push(photo);
+      }
+
+      setNewAlbum(prev => ({
+        ...prev,
+        photos: [...prev.photos, ...photosWithDimensions]
+      }));
+    } catch (error) {
+      alert('Erro ao processar imagens: ' + error);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
   };
 
-  const processFile = (file: File) => {
-    if (!file || !file.type.startsWith('image/')) {
-        alert("Por favor, selecione apenas arquivos de imagem.");
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setNewPhotoUrl(result);
-        if(!newPhotoTitle) {
-             setNewPhotoTitle(file.name.split('.')[0]);
-        }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        processFile(e.dataTransfer.files[0]);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      await processFiles(files);
     }
   };
 
-  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-        processFile(e.target.files[0]);
-    }
+  const removePhoto = (index: number) => {
+    setNewAlbum(prev => {
+      const newPhotos = prev.photos.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        photos: newPhotos,
+        main_photo_index: prev.main_photo_index >= newPhotos.length ? 0 : prev.main_photo_index
+      };
+    });
   };
 
-  const handleAddPhoto = (e: FormEvent) => {
+  const handleAddAlbum = async (e: FormEvent) => {
     e.preventDefault();
-    if (!newPhotoUrl || !newPhotoTitle) return;
-    
-    MockService.addGalleryItem({ title: newPhotoTitle, url: newPhotoUrl });
-    setGallery(MockService.getGallery());
-    setNewPhotoUrl('');
-    setNewPhotoTitle('');
+    if (!newAlbum.title || newAlbum.photos.length === 0) {
+      alert('Preencha o título e adicione pelo menos uma foto');
+      return;
+    }
+
+    const result = await APIService.addAlbum(newAlbum);
+    if (result) {
+      loadData();
+      setNewAlbum({ title: '', description: '', photos: [], main_photo_index: 0 });
+      alert('Álbum criado com sucesso!');
+    } else {
+      alert('Erro ao adicionar álbum');
+    }
   };
 
-  const handleDeletePhoto = (id: number) => {
-    if (confirm('Tem certeza que deseja excluir esta foto?')) {
-      MockService.deleteGalleryItem(id);
-      setGallery(MockService.getGallery());
+  const handleDeleteAlbum = async (id: number) => {
+    if (confirm('Tem certeza que deseja excluir este álbum? Todas as fotos serão removidas.')) {
+      const success = await APIService.deleteAlbum(id);
+      if (success) {
+        loadData();
+        alert('Álbum excluído com sucesso!');
+      } else {
+        alert('Erro ao excluir álbum');
+      }
     }
   };
 
   return (
     <div className="admin-layout animate-fade-in">
-      <div className="admin-sidebar">
-        <h3 style={{ marginBottom: '20px', color: '#ccc' }}>Gerenciamento</h3>
-        <div 
-          className={`admin-menu-item ${activeTab === 'requests' ? 'active' : ''}`}
-          onClick={() => setActiveTab('requests')}
-        >
-          Solicitações de Orçamento
-        </div>
-        <div 
-          className={`admin-menu-item ${activeTab === 'gallery' ? 'active' : ''}`}
-          onClick={() => setActiveTab('gallery')}
-        >
-          Galeria de Fotos
-        </div>
-      </div>
-      
       <div className="admin-content">
+        {/* Menu Tabs */}
+        <div className="admin-tabs">
+          <div 
+            className={`admin-tab ${activeTab === 'requests' ? 'active' : ''}`}
+            onClick={() => setActiveTab('requests')}
+          >
+            <span className="tab-icon">📋</span>
+            <span className="tab-text">Solicitações de Orçamento</span>
+          </div>
+          <div 
+            className={`admin-tab ${activeTab === 'albums' ? 'active' : ''}`}
+            onClick={() => setActiveTab('albums')}
+          >
+            <span className="tab-icon">📸</span>
+            <span className="tab-text">Álbuns de Fotos</span>
+          </div>
+        </div>
+        
+        {/* Content */}
+        <div className="admin-content-area">
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <div className="loading" style={{ margin: '0 auto 20px' }}></div>
+            <p style={{ color: '#666' }}>Carregando dados...</p>
+          </div>
+        ) : (
+          <>
         {activeTab === 'requests' && (
           <div>
             <h2 style={{ marginBottom: '20px', color: 'var(--primary)' }}>Solicitações de Orçamento</h2>
-            {requests.length === 0 ? (
+            {!requests || requests.length === 0 ? (
               <p>Nenhuma solicitação encontrada.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -446,76 +721,176 @@ const AdminPanel = () => {
           </div>
         )}
 
-        {activeTab === 'gallery' && (
+        {activeTab === 'albums' && (
           <div>
-            <h2 style={{ marginBottom: '20px', color: 'var(--primary)' }}>Gestão da Galeria</h2>
+            <h2 style={{ marginBottom: '20px', color: 'var(--primary)' }}>Gestão de Álbuns</h2>
             
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', marginBottom: '30px', boxShadow: 'var(--shadow)' }}>
-              <h4>Adicionar Nova Foto</h4>
+              <h4>Criar Novo Álbum</h4>
               
-              <div 
-                className={`dropzone ${isDragging ? 'active' : ''}`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
+              <form onSubmit={handleAddAlbum}>
+                <div className="form-group">
+                  <label className="form-label">Título do Álbum *</label>
                   <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    style={{ display: 'none' }} 
-                    accept="image/*"
-                    onChange={handleFileSelect}
+                    type="text" 
+                    className="form-control" 
+                    placeholder="Ex: Reforma em Alvenaria"
+                    value={newAlbum.title}
+                    onChange={e => setNewAlbum(prev => ({ ...prev, title: e.target.value }))}
+                    required
                   />
-                  <div style={{ pointerEvents: 'none' }}>
-                      <IconUpload />
-                      <p style={{ marginTop: '10px', fontWeight: 600 }}>
-                          Arraste e solte uma imagem aqui ou clique para selecionar
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Descrição</label>
+                  <textarea 
+                    className="form-control" 
+                    placeholder="Descreva o projeto..."
+                    rows={3}
+                    value={newAlbum.description}
+                    onChange={e => setNewAlbum(prev => ({ ...prev, description: e.target.value }))}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Fotos *</label>
+                  <div 
+                    className={`dropzone ${isDragging ? 'dragging' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      multiple
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <div className="dropzone-content">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      <p style={{ margin: '10px 0 5px', fontSize: '1rem', fontWeight: '500' }}>
+                        {isDragging ? 'Solte as imagens aqui' : 'Arraste imagens aqui'}
                       </p>
-                      <p style={{ fontSize: '0.85rem', color: '#999' }}>Suporta JPG, PNG, WEBP</p>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>
+                        ou clique para selecionar arquivos
+                      </p>
+                    </div>
                   </div>
-              </div>
+                  <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '10px' }}>
+                    Selecione múltiplas fotos (JPG, PNG, WEBP). Clique em uma foto abaixo para defini-la como principal.
+                  </p>
+                </div>
 
-              {newPhotoUrl && (
-                  <div style={{ marginBottom: '15px', textAlign: 'center' }}>
-                      <p style={{ fontSize: '0.9rem', marginBottom: '5px', color: '#666' }}>Pré-visualização:</p>
-                      <img src={newPhotoUrl} alt="Preview" style={{ maxHeight: '150px', borderRadius: '8px', border: '1px solid #ddd' }} />
+                {newAlbum.photos.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <label className="form-label">Fotos Selecionadas ({newAlbum.photos.length})</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px' }}>
+                      {newAlbum.photos.map((photo, index) => (
+                        <div 
+                          key={index} 
+                          style={{ 
+                            position: 'relative', 
+                            border: index === newAlbum.main_photo_index ? '3px solid var(--primary)' : '1px solid #ddd',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setNewAlbum(prev => ({ ...prev, main_photo_index: index }))}
+                        >
+                          <img 
+                            src={photo.url} 
+                            alt={photo.title} 
+                            style={{ width: '100%', height: '150px', objectFit: 'cover' }}
+                          />
+                          {index === newAlbum.main_photo_index && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 5,
+                              left: 5,
+                              backgroundColor: 'var(--primary)',
+                              color: 'white',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold'
+                            }}>
+                              PRINCIPAL
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removePhoto(index); }}
+                            style={{
+                              position: 'absolute',
+                              top: 5,
+                              right: 5,
+                              background: 'rgba(255,255,255,0.9)',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: 28,
+                              height: 28,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'var(--error)'
+                            }}
+                          >
+                            <IconTrash />
+                          </button>
+                          <p style={{ padding: '5px', fontSize: '0.75rem', textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+                            {photo.width}x{photo.height}px
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '10px' }}>
+                      ✨ Clique em uma foto para defini-la como principal
+                    </p>
                   </div>
-              )}
+                )}
 
-              <form onSubmit={handleAddPhoto} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="Título da foto"
-                  style={{ flex: 1, minWidth: '200px' }}
-                  value={newPhotoTitle}
-                  onChange={e => setNewPhotoTitle(e.target.value)}
-                  required
-                />
-                {/* Replaced URL input with hidden field or just logic, since we use the file reader now */}
-                <button type="submit" className="btn btn-primary" disabled={!newPhotoUrl}>Adicionar Foto</button>
+                <button type="submit" className="btn btn-primary" disabled={newAlbum.photos.length === 0}>
+                  Criar Álbum ({newAlbum.photos.length} {newAlbum.photos.length === 1 ? 'foto' : 'fotos'})
+                </button>
               </form>
             </div>
 
+            <h3 style={{ marginBottom: '15px' }}>Álbuns Existentes</h3>
             <div className="gallery-grid">
-              {gallery.map(item => (
-                <div key={item.id} className="gallery-item">
-                  <img src={item.url} alt={item.title} className="gallery-img" />
-                  <div className="gallery-caption" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{item.title}</span>
-                    <button 
-                      onClick={() => handleDeletePhoto(item.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--error)' }}
-                    >
-                      <IconTrash />
-                    </button>
+              {albums.map(album => (
+                <div key={album.id} className="gallery-item">
+                  <img src={album.main_photo_url} alt={album.title} className="gallery-img" />
+                  <div className="gallery-caption" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: 'column', gap: '5px' }}>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 'bold' }}>{album.title}</span>
+                      <button 
+                        onClick={() => handleDeleteAlbum(album.id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
+                      >
+                        <IconTrash />
+                      </button>
+                    </div>
+                    <span style={{ fontSize: '0.85rem', color: '#666', width: '100%', textAlign: 'left' }}>
+                      📸 {album.photo_count} {album.photo_count === 1 ? 'foto' : 'fotos'}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
+            {albums.length === 0 && <p style={{ textAlign: 'center', color: '#666' }}>Nenhum álbum criado ainda.</p>}
           </div>
         )}
+          </>
+        )}
+        </div>
       </div>
     </div>
   );
@@ -524,11 +899,93 @@ const AdminPanel = () => {
 // --- Pages ---
 
 const Home = ({ setView }: { setView: (v: ViewState) => void }) => {
-  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const lightboxRef = useRef<PhotoSwipeLightbox | null>(null);
 
   useEffect(() => {
-    setGalleryItems(MockService.getGallery());
+    const loadAlbums = async () => {
+      const data = await APIService.getAlbums();
+      setAlbums(data);
+    };
+    loadAlbums();
   }, []);
+
+  useEffect(() => {
+    if (albums.length === 0) return;
+
+    let clickedAlbumIndex = 0;
+
+    lightboxRef.current = new PhotoSwipeLightbox({
+      gallery: '#gallery-grid',
+      children: 'a',
+      pswpModule: () => import('photoswipe'),
+      dataSource: []
+    });
+
+    lightboxRef.current.on('uiRegister', function() {
+      lightboxRef.current!.pswp!.ui!.registerElement({
+        name: 'custom-caption',
+        order: 9,
+        isButton: false,
+        appendTo: 'root',
+        html: 'Caption text',
+        onInit: (el: HTMLElement) => {
+          lightboxRef.current!.pswp!.on('change', () => {
+            const currentSlide = lightboxRef.current!.pswp!.currSlide;
+            el.innerHTML = currentSlide?.data?.caption || '';
+          });
+        }
+      });
+    });
+
+    // Capturar clique antes de abrir
+    lightboxRef.current.on('itemData', (e: any) => {
+      const element = e.element as HTMLElement;
+      if (element) {
+        const index = element.getAttribute('data-album-index');
+        if (index !== null) {
+          clickedAlbumIndex = parseInt(index);
+        }
+      }
+    });
+
+    lightboxRef.current.on('beforeOpen', async () => {
+      try {
+        if (!albums[clickedAlbumIndex]) {
+          console.error('Álbum não encontrado no índice:', clickedAlbumIndex);
+          return;
+        }
+
+        const albumId = albums[clickedAlbumIndex].id;
+        const photos = await APIService.getAlbumPhotos(albumId);
+        
+        if (photos.length === 0) {
+          console.warn('Nenhuma foto encontrada para o álbum:', albumId);
+          return;
+        }
+
+        if (lightboxRef.current?.pswp) {
+          lightboxRef.current.pswp.options.dataSource = photos.map(photo => ({
+            src: photo.url,
+            width: photo.width,
+            height: photo.height,
+            caption: photo.title || albums[clickedAlbumIndex].title
+          }));
+        }
+      } catch (error) {
+        console.error('Erro ao carregar fotos do álbum:', error);
+      }
+    });
+
+    lightboxRef.current.init();
+
+    return () => {
+      if (lightboxRef.current) {
+        lightboxRef.current.destroy();
+        lightboxRef.current = null;
+      }
+    };
+  }, [albums]);
 
   return (
     <div className="animate-fade-in">
@@ -652,20 +1109,38 @@ const Home = ({ setView }: { setView: (v: ViewState) => void }) => {
         <div className="container">
           <div className="section-title">
             <h2>Galeria de Serviços</h2>
-            <p>Confira alguns dos nossos trabalhos realizados com excelência</p>
+            <p>Confira alguns dos nossos trabalhos realizados com excelência. Clique para ver todas as fotos.</p>
           </div>
           
-          <div className="gallery-grid">
-            {galleryItems.map(item => (
-              <div key={item.id} className="gallery-item">
-                <img src={item.url} alt={item.title} className="gallery-img" loading="lazy" />
-                <div className="gallery-caption">
-                  {item.title}
+          <div id="gallery-grid" className="gallery-grid">
+            {albums.map((album, index) => (
+              <a
+                key={album.id} 
+                href={album.main_photo_url}
+                className="album-card gallery-item"
+                style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
+                data-album-index={index}
+                data-pswp-width={album.main_photo_width}
+                data-pswp-height={album.main_photo_height}
+              >
+                <img 
+                  src={album.main_photo_url} 
+                  alt={album.title} 
+                  className="gallery-img" 
+                  loading="lazy" 
+                />
+                <div className="gallery-caption" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <span style={{ fontWeight: 'bold' }}>{album.title}</span>
+                  <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                    📸 {album.photo_count} {album.photo_count === 1 ? 'foto' : 'fotos'}
+                  </span>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
-          {galleryItems.length === 0 && <p style={{textAlign: 'center'}}>Nenhuma foto disponível no momento.</p>}
+          {albums.length === 0 && (
+            <p style={{ textAlign: 'center', color: '#666' }}>Nenhum álbum disponível no momento.</p>
+          )}
         </div>
       </section>
 
@@ -811,12 +1286,18 @@ const Contact = () => {
     }
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // 1. Save to "Database" (Mock API)
-    MockService.addRequest(formData);
+    // 1. Save to Database via API
+    const success = await APIService.addRequest(formData);
+    
+    if (!success) {
+      alert('Erro ao registrar solicitação. Tente novamente.');
+      setIsSubmitting(false);
+      return;
+    }
 
     // 2. Prepare WhatsApp Message
     const message = `
@@ -849,11 +1330,8 @@ CEP: ${formData.address.cep}
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${PHONE_WHATSAPP}?text=${encodedMessage}`;
     
-    // Simulate API delay then redirect
-    setTimeout(() => {
-        setIsSubmitting(false);
-        window.open(whatsappUrl, '_blank');
-    }, 1000);
+    setIsSubmitting(false);
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
