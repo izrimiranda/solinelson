@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solinelson - Marido de Aluguel</title>
+    <link rel="icon" href="https://img.codigo1615.com.br/uploads/images/solinelson/img_69404f28517549.79500985.webp" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --primary: #ab5b0d;
+        --secondary: #e38130;
+        --text: #333333;
+        --text-light: #666666;
+        --bg: #f9f9f9;
+        --white: #ffffff;
+        --whatsapp: #25d366;
+        --error: #dc3545;
+        --success: #28a745;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        color: var(--text);
+        background-color: var(--bg);
+        line-height: 1.6;
+      }
+
+      button {
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      a {
+        text-decoration: none;
+        color: inherit;
+      }
+
+      /* Utilities */
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        text-align: center;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: var(--white);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        filter: brightness(1.1);
+      }
+      
+      .btn-danger {
+        background-color: var(--error);
+        color: var(--white);
+      }
+      
+      .btn-success {
+        background-color: var(--success);
+        color: var(--white);
+      }
+
+      .btn-outline {
+        border: 2px solid var(--white);
+        background: transparent;
+        color: var(--white);
+      }
+
+      .btn-outline:hover {
+        background: var(--white);
+        color: var(--primary);
+      }
+
+      .section-title {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .section-title h2 {
+        font-size: 2.5rem;
+        color: var(--primary);
+        margin-bottom: 10px;
+      }
+
+      .section-title p {
+        color: var(--text-light);
+        font-size: 1.1rem;
+      }
+
+      /* Header Transitions */
+      header {
+        transition: all 0.3s ease;
+      }
+      
+      header.scrolled {
+        background-color: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Form Styles */
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+      }
+
+      .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      textarea.form-control {
+        resize: vertical;
+        min-height: 120px;
+      }
+
+      /* Responsive Form Grids */
+      .form-row {
+        display: grid;
+        gap: 20px;
+      }
+      
+      .form-row-address {
+        grid-template-columns: 3fr 1fr;
+      }
+      
+      .form-row-location {
+        grid-template-columns: 1fr 1fr 80px;
+      }
+
+      @media (max-width: 768px) {
+        .form-row-address,
+        .form-row-location {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Dropzone */
+      .dropzone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: #fafafa;
+        color: #666;
+        margin-bottom: 15px;
+      }
+      .dropzone.active {
+        border-color: var(--primary);
+        background-color: rgba(171, 91, 13, 0.05);
+        color: var(--primary);
+      }
+      .dropzone:hover {
+        border-color: #999;
+      }
+
+      /* Gallery Grid */
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+      }
+      
+      .gallery-item {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        transition: transform 0.3s ease;
+        background: white;
+      }
+      
+      .gallery-item:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+      }
+
+      .gallery-img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+      }
+      
+      .gallery-caption {
+        padding: 15px;
+        text-align: center;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      /* Admin Panel Styles */
+      .admin-layout {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: 100vh;
+      }
+      
+      .admin-sidebar {
+        background-color: #333;
+        color: white;
+        padding: 20px;
+      }
+      
+      .admin-content {
+        padding: 30px;
+        background-color: #f4f4f4;
+      }
+      
+      .admin-menu-item {
+        padding: 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        margin-bottom: 5px;
+        transition: background 0.2s;
+      }
+      
+      .admin-menu-item:hover, .admin-menu-item.active {
+        background-color: var(--primary);
+      }
+      
+      .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      
+      .status-pending { background: #ffeeba; color: #856404; }
+      .status-contacted { background: #d4edda; color: #155724; }
+      
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+      
+      .table th, .table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+      }
+
+      @media (max-width: 768px) {
+        .admin-layout {
+          grid-template-columns: 1fr;
+        }
+        .admin-sidebar {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+        }
+      }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .animate-fade-in {
+        animation: fadeIn 0.6s ease-out forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
