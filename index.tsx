@@ -84,14 +84,10 @@ const IconUpload = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="n
 // --- API SERVICE ---
 // Real API calls to PHP backend
 
-// 🔧 Configure a URL base da API conforme o ambiente:
-// Desenvolvimento Local (PHP built-in server via dev.sh):
-//   const API_BASE = 'http://localhost:8000/api';
-// Produção (mesmo domínio):
-//   const API_BASE = '/api';
-// Produção (domínio diferente):
-//   const API_BASE = 'https://codigo1615.com.br/solinelson/api';
-const API_BASE = 'http://localhost:8000/api';
+// 🔧 Detecta automaticamente o ambiente
+const API_BASE = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8000/api'  // Desenvolvimento
+  : '/api';                        // Produção (mesmo domínio)
 
 const APIService = {
   // Álbuns
@@ -1240,7 +1236,7 @@ const Contact = () => {
     setFormData(prev => ({ ...prev, phone: value }));
   };
 
-  const handleCepChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleCepChange = async (e: ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 8) value = value.slice(0, 8);
     
@@ -1249,6 +1245,37 @@ const Contact = () => {
     
     setFormData(prev => ({ ...prev, address: { ...prev.address, cep: value } }));
     setCepError('');
+    
+    // Buscar CEP automaticamente quando completo (8 dígitos)
+    if (value.replace(/\D/g, '').length === 8) {
+      const rawCep = value.replace(/\D/g, '');
+      setLoadingCep(true);
+      
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${rawCep}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+          setCepError('CEP não encontrado.');
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              cep: value,
+              street: data.logradouro,
+              neighborhood: data.bairro,
+              city: data.localidade,
+              state: data.uf
+            }
+          }));
+        }
+      } catch (err) {
+        setCepError('Erro ao buscar CEP. Tente novamente.');
+      } finally {
+        setLoadingCep(false);
+      }
+    }
   };
 
   const fetchCep = async () => {
@@ -1339,9 +1366,6 @@ CEP: ${formData.address.cep}
       <div className="section-title">
         <h2>Solicitar Orçamento</h2>
         <p>Preencha o formulário abaixo e entraremos em contato.</p>
-        <p style={{ marginTop: '10px', fontWeight: 'bold', color: 'var(--primary)' }}>
-           Ou contate-nos diretamente: {PHONE_DISPLAY}
-        </p>
       </div>
 
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: 'var(--shadow)' }}>
@@ -1409,25 +1433,15 @@ CEP: ${formData.address.cep}
 
           <h3 style={{ margin: '30px 0 20px', color: 'var(--secondary)', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>3. Endereço do Serviço</h3>
           <div className="form-group">
-            <label className="form-label">CEP *</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input 
-                type="text" 
-                className="form-control" 
-                required 
-                placeholder="00000-000"
-                value={formData.address.cep}
-                onChange={handleCepChange}
-              />
-              <button 
-                type="button" 
-                className="btn btn-primary" 
-                onClick={fetchCep}
-                disabled={loadingCep}
-              >
-                {loadingCep ? 'Buscando...' : 'Buscar'}
-              </button>
-            </div>
+            <label className="form-label">CEP * {loadingCep && <span style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>Buscando...</span>}</label>
+            <input 
+              type="text" 
+              className="form-control" 
+              required 
+              placeholder="00000-000"
+              value={formData.address.cep}
+              onChange={handleCepChange}
+            />
             {cepError && <p style={{ color: 'var(--error)', fontSize: '0.9rem', marginTop: '5px' }}>{cepError}</p>}
           </div>
 
@@ -1515,7 +1529,33 @@ CEP: ${formData.address.cep}
 // --- App ---
 
 const App = () => {
-  const [view, setView] = useState<ViewState>('home');
+  // Ler hash inicial da URL para definir view
+  const getInitialView = (): ViewState => {
+    const hash = window.location.hash.slice(1); // Remove o #
+    const validViews: ViewState[] = ['home', 'contact', 'admin', 'login'];
+    return validViews.includes(hash as ViewState) ? (hash as ViewState) : 'home';
+  };
+
+  const [view, setView] = useState<ViewState>(getInitialView);
+
+  // Atualizar hash quando view muda
+  useEffect(() => {
+    window.location.hash = view;
+  }, [view]);
+
+  // Listener para mudanças no hash (botão voltar/avançar do navegador)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      const validViews: ViewState[] = ['home', 'contact', 'admin', 'login'];
+      if (validViews.includes(hash as ViewState)) {
+        setView(hash as ViewState);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
