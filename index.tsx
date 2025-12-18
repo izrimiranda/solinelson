@@ -31,7 +31,14 @@ interface FormData {
 
 interface BudgetRequest extends FormData {
   id: number;
-  status: 'pending' | 'contacted';
+  email?: string;
+  status: 'pending' | 'contacted' | 'budgeted' | 'approved' | 'rejected' | 'completed';
+  budgetValue?: number;
+  isApproved?: boolean;
+  executionDate?: string;
+  budgetSentAt?: string;
+  approvedAt?: string;
+  notes?: string;
   createdAt: string;
 }
 
@@ -203,6 +210,71 @@ const APIService = {
     }
   },
 
+  // Orçamentos
+  updateBudget: async (id: number, budgetData: Partial<BudgetRequest>): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/update_budget.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id, ...budgetData })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erro ao atualizar orçamento:', error);
+      return false;
+    }
+  },
+
+  approveBudget: async (id: number, isApproved: boolean): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/approve_budget.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id, is_approved: isApproved })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erro ao aprovar/rejeitar orçamento:', error);
+      return false;
+    }
+  },
+
+  resendBudgetNotification: async (id: number): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/resend_budget_notification.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erro ao reenviar notificação:', error);
+      return false;
+    }
+  },
+
+  deleteBudget: async (id: number): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE}/delete_budget.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erro ao deletar orçamento:', error);
+      return false;
+    }
+  },
+
   // Autenticação
   login: async (username: string, password: string): Promise<boolean> => {
     try {
@@ -291,6 +363,13 @@ const Header = ({ setView, currentView }: { setView: (v: ViewState) => void, cur
               <a href="#" onClick={(e) => { e.preventDefault(); setView('home'); setTimeout(() => document.getElementById('galeria')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Galeria</a>
               <a href="#" onClick={(e) => { e.preventDefault(); setView('home'); setTimeout(() => document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Sobre</a>
               <button className="btn btn-primary" onClick={() => setView('contact')}>Solicitar Orçamento</button>
+              <button 
+                onClick={() => setView('login')} 
+                style={{ background: 'none', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '8px', color: '#666', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Área Administrativa"
+              >
+                <IconLock /> Admin
+              </button>
             </>
           )}
         </nav>
@@ -330,6 +409,9 @@ const Header = ({ setView, currentView }: { setView: (v: ViewState) => void, cur
               <a href="#" onClick={(e) => { e.preventDefault(); setIsMenuOpen(false); setView('home'); setTimeout(() => document.getElementById('galeria')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Galeria</a>
               <a href="#" onClick={(e) => { e.preventDefault(); setIsMenuOpen(false); setView('home'); setTimeout(() => document.getElementById('sobre')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Sobre</a>
               <button className="btn btn-primary" onClick={() => { setIsMenuOpen(false); setView('contact'); }}>Solicitar Orçamento</button>
+              <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }} onClick={() => { setIsMenuOpen(false); setView('login'); }}>
+                <IconLock /> Área Administrativa
+              </button>
             </>
           )}
         </div>
@@ -386,15 +468,7 @@ const Footer = ({ setView }: { setView: (v: ViewState) => void }) => (
       </div>
       
       <div style={{ borderTop: '1px solid #333', paddingTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', color: '#888', fontSize: '0.9rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-            <p>&copy; {new Date().getFullYear()} Solinelson - Marido de Aluguel.</p>
-            <button 
-            onClick={() => setView('login')} 
-            style={{ background: 'none', border: 'none', color: '#444', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
-            >
-            Área Administrativa
-            </button>
-        </div>
+        <p>&copy; {new Date().getFullYear()} Solinelson - Marido de Aluguel. Todos os direitos reservados.</p>
         
         <div style={{ textAlign: 'center' }}>
             <a href="https://www.codigo1615.com.br" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'none' }}>Código 1615</a>
@@ -467,19 +541,20 @@ const Login = ({ setView }: { setView: (v: ViewState) => void }) => {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem', color: '#666' }}>
-          Usuário padrão: <strong>admin</strong>
-        </p>
       </div>
     </div>
   );
 };
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'albums'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'budgets' | 'albums'>('requests');
   const [requests, setRequests] = useState<BudgetRequest[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Budget editing state
+  const [editingBudget, setEditingBudget] = useState<number | null>(null);
+  const [budgetForm, setBudgetForm] = useState<Partial<BudgetRequest>>({});
   
   // Album Form State
   const [newAlbum, setNewAlbum] = useState<NewAlbumForm>({
@@ -521,6 +596,101 @@ const AdminPanel = () => {
     } else {
       alert('Erro ao atualizar status');
     }
+  };
+
+  // --- Budget Management ---
+  
+  const handleEditBudget = (request: BudgetRequest) => {
+    setEditingBudget(request.id);
+    setBudgetForm({
+      email: request.email || '',
+      budget_value: request.budgetValue || 0,
+      execution_date: request.executionDate || '',
+      notes: request.notes || '',
+      status: request.status
+    });
+  };
+
+  const handleSaveBudget = async (id: number) => {
+    const success = await APIService.updateBudget(id, {
+      email: budgetForm.email,
+      budgetValue: budgetForm.budget_value,
+      executionDate: budgetForm.execution_date,
+      notes: budgetForm.notes,
+      status: budgetForm.status as any
+    });
+    
+    if (success) {
+      setEditingBudget(null);
+      setBudgetForm({});
+      loadData();
+      alert('Orçamento atualizado com sucesso!');
+    } else {
+      alert('Erro ao atualizar orçamento');
+    }
+  };
+
+  const handleApproveBudget = async (id: number, approve: boolean) => {
+    if (approve && !confirm('Aprovar este orçamento? Um email será enviado ao cliente e ao admin.')) {
+      return;
+    }
+    
+    const success = await APIService.approveBudget(id, approve);
+    if (success) {
+      loadData();
+      alert(approve ? 'Orçamento aprovado!' : 'Orçamento rejeitado');
+    } else {
+      alert('Erro ao processar aprovação');
+    }
+  };
+
+  const handleResendEmail = async (id: number) => {
+    if (!confirm('Reenviar email de orçamento para o cliente?')) return;
+    
+    const success = await APIService.resendBudgetNotification(id);
+    if (success) {
+      alert('Email reenviado com sucesso!');
+    } else {
+      alert('Erro ao reenviar email. Verifique os logs.');
+    }
+  };
+
+  const handleDeleteBudget = async (id: number) => {
+    if (!confirm('Tem certeza que deseja DELETAR este orçamento? Esta ação não pode ser desfeita!')) {
+      return;
+    }
+    
+    const success = await APIService.deleteBudget(id);
+    if (success) {
+      loadData();
+      alert('Orçamento deletado com sucesso!');
+    } else {
+      alert('Erro ao deletar orçamento');
+    }
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'status-pending',
+      'contacted': 'status-contacted',
+      'budgeted': 'status-budgeted',
+      'approved': 'status-approved',
+      'rejected': 'status-rejected',
+      'completed': 'status-completed'
+    };
+    return statusMap[status] || 'status-pending';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: { [key: string]: string } = {
+      'pending': 'Pendente',
+      'contacted': 'Contatado',
+      'budgeted': 'Orçado',
+      'approved': 'Aprovado',
+      'rejected': 'Rejeitado',
+      'completed': 'Concluído'
+    };
+    return labels[status] || status;
   };
 
   // --- Album Logic ---
@@ -649,14 +819,21 @@ const AdminPanel = () => {
             onClick={() => setActiveTab('requests')}
           >
             <span className="tab-icon">📋</span>
-            <span className="tab-text">Solicitações de Orçamento</span>
+            <span className="tab-text">Solicitações</span>
+          </div>
+          <div 
+            className={`admin-tab ${activeTab === 'budgets' ? 'active' : ''}`}
+            onClick={() => setActiveTab('budgets')}
+          >
+            <span className="tab-icon">💰</span>
+            <span className="tab-text">Orçamentos</span>
           </div>
           <div 
             className={`admin-tab ${activeTab === 'albums' ? 'active' : ''}`}
             onClick={() => setActiveTab('albums')}
           >
             <span className="tab-icon">📸</span>
-            <span className="tab-text">Álbuns de Fotos</span>
+            <span className="tab-text">Álbuns</span>
           </div>
         </div>
         
@@ -712,6 +889,243 @@ const AdminPanel = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'budgets' && (
+          <div>
+            <h2 style={{ marginBottom: '20px', color: 'var(--primary)' }}>Gerenciamento de Orçamentos</h2>
+            <p style={{ marginBottom: '20px', color: '#666' }}>
+              Gerencie os orçamentos das solicitações: defina valores, datas de execução e envie notificações por email.
+            </p>
+            
+            {!requests || requests.length === 0 ? (
+              <p>Nenhuma solicitação encontrada.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {requests.map(req => (
+                  <div key={req.id} style={{ 
+                    backgroundColor: 'white', 
+                    padding: '20px', 
+                    borderRadius: '8px', 
+                    boxShadow: 'var(--shadow)',
+                    border: req.isApproved ? '2px solid #4CAF50' : '1px solid #ddd'
+                  }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ margin: '0 0 5px 0', color: 'var(--primary)' }}>
+                          #{req.id} - {req.name}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
+                          📅 {new Date(req.createdAt).toLocaleDateString('pt-BR')} | 
+                          📱 {req.phone} | 
+                          📧 {req.email || 'Não informado'}
+                        </p>
+                      </div>
+                      <span className={`status-badge ${getStatusBadgeClass(req.status)}`}>
+                        {getStatusLabel(req.status)}
+                      </span>
+                    </div>
+
+                    {/* Service Info */}
+                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px' }}>
+                      <p style={{ margin: '0 0 5px 0' }}><strong>Serviço:</strong> {req.serviceType}</p>
+                      {req.description && (
+                        <p style={{ margin: '5px 0', fontSize: '0.9rem', color: '#666' }}>
+                          {req.description}
+                        </p>
+                      )}
+                      <p style={{ margin: '5px 0 0 0', fontSize: '0.9rem' }}>
+                        <strong>Endereço:</strong> {req.address.street}, {req.address.number} - {req.address.neighborhood}, {req.address.city}/{req.address.state}
+                      </p>
+                    </div>
+
+                    {/* Budget Form */}
+                    {editingBudget === req.id ? (
+                      <div style={{ border: '2px solid var(--primary)', padding: '15px', borderRadius: '8px', backgroundColor: '#fffef0' }}>
+                        <h4 style={{ marginTop: 0 }}>Editar Orçamento</h4>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Email do Cliente</label>
+                            <input 
+                              type="email"
+                              className="form-control"
+                              value={budgetForm.email || ''}
+                              onChange={e => setBudgetForm(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="cliente@email.com"
+                            />
+                          </div>
+                          
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Valor do Orçamento (R$)</label>
+                            <input 
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              value={budgetForm.budget_value || ''}
+                              onChange={e => setBudgetForm(prev => ({ ...prev, budget_value: parseFloat(e.target.value) }))}
+                              placeholder="0.00"
+                            />
+                          </div>
+                          
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Data de Execução</label>
+                            <input 
+                              type="date"
+                              className="form-control"
+                              value={budgetForm.execution_date || ''}
+                              onChange={e => setBudgetForm(prev => ({ ...prev, execution_date: e.target.value }))}
+                            />
+                          </div>
+                          
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Status</label>
+                            <select 
+                              className="form-control"
+                              value={budgetForm.status || req.status}
+                              onChange={e => setBudgetForm(prev => ({ ...prev, status: e.target.value }))}
+                            >
+                              <option value="pending">Pendente</option>
+                              <option value="contacted">Contatado</option>
+                              <option value="budgeted">Orçado</option>
+                              <option value="approved">Aprovado</option>
+                              <option value="rejected">Rejeitado</option>
+                              <option value="completed">Concluído</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div className="form-group">
+                          <label className="form-label">Observações Internas</label>
+                          <textarea 
+                            className="form-control"
+                            rows={3}
+                            value={budgetForm.notes || ''}
+                            onChange={e => setBudgetForm(prev => ({ ...prev, notes: e.target.value }))}
+                            placeholder="Anotações sobre o orçamento..."
+                          />
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                          <button 
+                            className="btn btn-primary"
+                            onClick={() => handleSaveBudget(req.id)}
+                          >
+                            💾 Salvar Orçamento
+                          </button>
+                          <button 
+                            className="btn btn-outline"
+                            onClick={() => { setEditingBudget(null); setBudgetForm({}); }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Budget Info Display */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '15px', padding: '10px', backgroundColor: '#f0f7ff', borderRadius: '5px' }}>
+                          <div>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Valor do Orçamento</p>
+                            <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: req.budgetValue ? 'var(--primary)' : '#999' }}>
+                              {req.budgetValue ? `R$ ${req.budgetValue.toFixed(2).replace('.', ',')}` : 'Não definido'}
+                            </p>
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Data de Execução</p>
+                            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold' }}>
+                              {req.executionDate ? new Date(req.executionDate).toLocaleDateString('pt-BR') : 'Não definida'}
+                            </p>
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Aprovação</p>
+                            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold', color: req.isApproved ? '#4CAF50' : '#999' }}>
+                              {req.isApproved ? '✅ Aprovado' : '⏳ Pendente'}
+                            </p>
+                          </div>
+                          {req.budgetSentAt && (
+                            <div>
+                              <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Email Enviado</p>
+                              <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                                {new Date(req.budgetSentAt).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {req.notes && (
+                          <div style={{ padding: '10px', backgroundColor: '#fff3cd', borderRadius: '5px', marginBottom: '15px' }}>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#856404' }}>
+                              <strong>📝 Observações:</strong> {req.notes}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                          <button 
+                            className="btn btn-primary"
+                            onClick={() => handleEditBudget(req)}
+                          >
+                            ✏️ Editar Orçamento
+                          </button>
+                          
+                          {req.budgetValue && req.budgetValue > 0 && req.email && !req.isApproved && (
+                            <button 
+                              className="btn"
+                              style={{ backgroundColor: '#4CAF50', color: 'white' }}
+                              onClick={() => handleApproveBudget(req.id, true)}
+                            >
+                              ✅ Aprovar
+                            </button>
+                          )}
+                          
+                          {!req.isApproved && (
+                            <button 
+                              className="btn"
+                              style={{ backgroundColor: '#f44336', color: 'white' }}
+                              onClick={() => handleApproveBudget(req.id, false)}
+                            >
+                              ❌ Rejeitar
+                            </button>
+                          )}
+                          
+                          {req.budgetValue && req.budgetValue > 0 && req.email && (
+                            <button 
+                              className="btn btn-outline"
+                              onClick={() => handleResendEmail(req.id)}
+                            >
+                              📧 Reenviar Email
+                            </button>
+                          )}
+                          
+                          <button 
+                            className="btn"
+                            style={{ backgroundColor: '#757575', color: 'white' }}
+                            onClick={() => handleDeleteBudget(req.id)}
+                            title="Deletar orçamento permanentemente"
+                          >
+                            🗑️ Deletar
+                          </button>
+                          
+                          <a 
+                            href={`https://wa.me/${req.phone.replace(/\D/g, '')}?text=Olá ${req.name}! Sobre o orçamento #${req.id}...`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn"
+                            style={{ backgroundColor: '#25D366', color: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
+                          >
+                            💬 WhatsApp
+                          </a>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
