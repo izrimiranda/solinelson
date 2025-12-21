@@ -525,9 +525,6 @@ const Login = ({ setView }: { setView: (v: ViewState) => void }) => {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem', color: '#666' }}>
-          Usuário padrão: <strong>admin</strong>
-        </p>
       </div>
     </div>
   );
