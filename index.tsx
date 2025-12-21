@@ -1362,15 +1362,49 @@ const Home = ({ setView }: { setView: (v: ViewState) => void }) => {
     <div className="animate-fade-in">
       {/* Hero Section */}
       <section style={{
-        background: 'linear-gradient(135deg, rgba(171, 91, 13, 0.9), rgba(227, 129, 48, 0.9)), url("https://images.unsplash.com/photo-1581094794329-cd8119608f84?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        position: 'relative',
+        overflow: 'hidden',
         padding: '120px 0',
         color: 'white',
-        textAlign: 'center'
+        textAlign: 'center',
+        minHeight: '600px',
+        display: 'flex',
+        alignItems: 'center'
       }}>
-        <div className="container">
+        {/* Video Background */}
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            minWidth: '100%',
+            minHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            transform: 'translate(-50%, -50%)',
+            objectFit: 'cover',
+            zIndex: -2
+          }}
+        >
+          <source src="/video/background.mp4" type="video/mp4" />
+        </video>
+        
+        {/* Overlay translúcido */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(135deg, rgba(171, 91, 13, 0.55), rgba(227, 129, 48, 0.55))',
+          zIndex: -1
+        }} />
+
+        <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <h1 style={{ fontSize: '3rem', marginBottom: '20px', fontWeight: 700 }}>Soluções Profissionais para Sua Casa e Empresa</h1>
           <p style={{ fontSize: '1.25rem', marginBottom: '40px', maxWidth: '800px', margin: '0 auto 40px', opacity: 0.9 }}>
             Qualidade, rapidez e confiança em serviços de hidráulica, construção civil e manutenção geral.
