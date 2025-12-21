@@ -14,9 +14,11 @@ checkAuth();
 try {
     $stmt = $pdo->query("
         SELECT 
-            id, name, phone, service_type, description, 
+            id, name, phone, email, service_type, description, 
             service_date, cep, street, number, complement, 
             neighborhood, city, state, status, 
+            budget_value, is_approved, execution_date, 
+            budget_sent_at, approved_at, notes,
             created_at, updated_at
         FROM budget_requests
         ORDER BY created_at DESC
@@ -30,6 +32,7 @@ try {
             'id' => (int)$req['id'],
             'name' => $req['name'],
             'phone' => $req['phone'],
+            'email' => $req['email'],
             'serviceType' => $req['service_type'],
             'description' => $req['description'],
             'date' => $req['service_date'],
@@ -43,6 +46,12 @@ try {
                 'state' => $req['state']
             ],
             'status' => $req['status'],
+            'budgetValue' => $req['budget_value'] ? (float)$req['budget_value'] : null,
+            'isApproved' => (bool)$req['is_approved'],
+            'executionDate' => $req['execution_date'],
+            'budgetSentAt' => $req['budget_sent_at'],
+            'approvedAt' => $req['approved_at'],
+            'notes' => $req['notes'],
             'createdAt' => $req['created_at']
         ];
     }, $requests);
